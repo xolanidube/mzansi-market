@@ -153,3 +153,12 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     timeout = setTimeout(() => func(...args), wait);
   };
 }
+
+/**
+ * Generate a unique key
+ */
+export function generateUniqueKey(prefix: string = ''): string {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return prefix ? `${prefix}_${timestamp}${randomStr}` : `${timestamp}${randomStr}`;
+}
