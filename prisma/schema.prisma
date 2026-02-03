@@ -1,0 +1,969 @@
+// Prisma Schema for Wit.U Marketplace Platform
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== ENUMS ====================
+
+enum UserType {
+  CLIENT
+  SERVICE_PROVIDER
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum JobType {
+  FIX
+  HOURLY
+  FREELANCE
+  FULLTIME
+  PARTTIME
+  INTERNSHIP
+  TEMPORARY
+  CUSTOM
+}
+
+enum JobStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum MessageStatus {
+  UNREAD
+  READ
+  ARCHIVED
+  DELETED
+}
+
+enum ProductStatus {
+  AVAILABLE
+  OUT_OF_STOCK
+  DISCONTINUED
+}
+
+enum OrderStatus {
+  CART
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+  REFUND
+  WITHDRAWAL
+}
+
+// ==================== USER & AUTH MODELS ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  password      String
+  phone         String?
+  gender        Gender?
+  userType      UserType  @default(CLIENT)
+  picture       String?
+  pictureBlob   String?   @db.Text
+  uniqueKey     String    @unique @default(cuid())
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  shop                  Shop?
+  services              Service[]
+  jobsPosted            Job[]              @relation("JobPoster")
+  jobApplications       JobApplication[]
+  appointmentsBooked    Appointment[]      @relation("Requester")
+  appointmentsReceived  Appointment[]      @relation("Provider")
+  sentMessages          Message[]          @relation("Sender")
+  receivedMessages      Message[]          @relation("Receiver")
+  reviewsGiven          Review[]           @relation("ReviewSender")
+  reviewsReceived       Review[]           @relation("ReviewReceiver")
+  wallet                Wallet?
+  orders                Order[]
+  accounts              Account[]
+  sessions              Session[]
+  galleryImages         GalleryImage[]
+  notifications         Notification[]
+  availability          Availability[]
+  blockedTimes          BlockedTime[]
+  payments              Payment[]
+  savedServices         SavedService[]
+  savedByUsers          SavedProvider[]    @relation("SavedProvider")
+  savedProviders        SavedProvider[]    @relation("SavedByUser")
+  notificationPrefs     NotificationPreference[]
+  reportsSubmitted      ContentReport[]    @relation("ReportSubmitter")
+  reportsReceived       ContentReport[]    @relation("ReportedUser")
+  reportsResolved       ContentReport[]    @relation("ReportResolver")
+  searchHistory         SearchHistory[]
+  recentlyViewed        RecentlyViewed[]
+  savedFilters          SavedFilter[]
+  serviceShares         ServiceShare[]
+  referralsMade         Referral[]         @relation("Referrer")
+  referralsReceived     Referral[]         @relation("ReferredUser")
+  recurringRequests     RecurringAppointment[] @relation("RecurringRequester")
+  recurringProvided     RecurringAppointment[] @relation("RecurringProvider")
+  withdrawalRequests    WithdrawalRequest[]
+  themesCreated         ThemeConfig[]          @relation("ThemeCreator")
+
+  @@map("users")
+}
+
+// NextAuth.js Account model
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// NextAuth.js Session model
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// NextAuth.js Verification Token model
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Password Reset Token
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([email, token])
+  @@map("password_reset_tokens")
+}
+
+// ==================== SHOP/BUSINESS MODELS ====================
+
+model Shop {
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String?  @db.Text
+  address               String?
+  contact               String?
+  tax                   String?
+  startTime             String?
+  endTime               String?
+  openingDays           String[]
+  allowedBooking        Boolean  @default(true)
+  isApproved            Boolean  @default(false)
+  profileBlob           String?  @db.Text
+  coverBlob             String?  @db.Text
+  profileUrl            String?
+  coverUrl              String?
+  registrationDocument  String?
+  rating                Float    @default(0)
+  totalReviews          Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("shops")
+}
+
+// ==================== CATEGORY MODELS ====================
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  iconPath    String?
+  mapIconPath String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  services Service[]
+  jobs     Job[]
+  products Product[]
+
+  @@map("categories")
+}
+
+model TopCategory {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  clicks    Int     @default(0)
+  requested Int     @default(0)
+  picture   String? @db.Text
+  isActive  Boolean @default(true)
+
+  @@map("top_categories")
+}
+
+// ==================== SERVICE MODELS ====================
+
+model Service {
+  id          String   @id @default(cuid())
+  uniqueKey   String   @unique @default(cuid())
+  name        String
+  description String?  @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  chargeTime  Int
+  categoryId  String?
+  picture     String?
+  pictureBlob String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  providerId   String
+  provider     User              @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category     Category?         @relation(fields: [categoryId], references: [id])
+  appointments Appointment[]
+  featured     FeaturedService?
+  savedBy      SavedService[]
+  reports      ContentReport[]
+  recentlyViewed RecentlyViewed[]
+  shares       ServiceShare[]
+  referrals    Referral[]
+  recurring    RecurringAppointment[]
+
+  @@map("services")
+}
+
+model FeaturedService {
+  id        String   @id @default(cuid())
+  startTime DateTime
+  days      Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  serviceId String  @unique
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("featured_services")
+}
+
+model OnDemandService {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String
+  blobLink    String?
+  link        String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@map("ondemand_services")
+}
+
+// ==================== JOB MODELS ====================
+
+model Job {
+  id                String    @id @default(cuid())
+  title             String
+  description       String    @db.Text
+  categoryId        String?
+  subCategory       String?
+  skills            String[]
+  jobType           JobType
+  customJobType     String?
+  budgetMin         Decimal?  @db.Decimal(10, 2)
+  budgetMax         Decimal?  @db.Decimal(10, 2)
+  estimatedBudget   String?
+  deliveryDays      Int?
+  preferredLocation String?
+  featuredImage     String?
+  attachments       String[]
+  status            JobStatus @default(OPEN)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  posterId     String
+  poster       User             @relation("JobPoster", fields: [posterId], references: [id], onDelete: Cascade)
+  category     Category?        @relation(fields: [categoryId], references: [id])
+  applications JobApplication[]
+
+  @@map("jobs")
+}
+
+model JobApplication {
+  id        String            @id @default(cuid())
+  proposal  String?           @db.Text
+  bidAmount Decimal?          @db.Decimal(10, 2)
+  status    ApplicationStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  jobId       String
+  job         Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applicantId String
+  applicant   User   @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, applicantId])
+  @@map("job_applications")
+}
+
+// ==================== APPOINTMENT/BOOKING MODELS ====================
+
+model Appointment {
+  id          String            @id @default(cuid())
+  date        DateTime
+  time        String
+  address     String?
+  note        String?           @db.Text
+  paymentMode String?
+  services    String[]
+  status      AppointmentStatus @default(PENDING)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  requesterId String
+  requester   User      @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  providerId  String
+  provider    User      @relation("Provider", fields: [providerId], references: [id], onDelete: Cascade)
+  serviceId   String?
+  service     Service?  @relation(fields: [serviceId], references: [id])
+  payments    Payment[]
+  recurringAppointmentId String?
+  recurringAppointment   RecurringAppointment? @relation(fields: [recurringAppointmentId], references: [id], onDelete: SetNull)
+
+  @@map("appointments")
+}
+
+// ==================== MESSAGING MODELS ====================
+
+model Message {
+  id        String        @id @default(cuid())
+  subject   String?
+  content   String        @db.Text
+  status    MessageStatus @default(UNREAD)
+  createdAt DateTime      @default(now())
+
+  senderId   String
+  sender     User   @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User   @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+// ==================== REVIEW MODELS ====================
+
+model Review {
+  id                   String    @id @default(cuid())
+  rating               Int
+  text                 String?   @db.Text
+  providerResponse     String?   @db.Text
+  providerResponseDate DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @default(now()) @updatedAt
+
+  senderId   String
+  sender     User            @relation("ReviewSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User            @relation("ReviewReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  reports    ContentReport[]
+
+  @@map("reviews")
+}
+
+// ==================== E-COMMERCE (KASILETHU) MODELS ====================
+
+model Product {
+  id          String        @id @default(cuid())
+  name        String
+  description String?       @db.Text
+  price       Decimal       @db.Decimal(10, 2)
+  status      ProductStatus @default(AVAILABLE)
+  categoryId  String?
+  imageBlob   String?       @db.Text
+  imageUrl    String?
+  quantity    Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  category       Category?        @relation(fields: [categoryId], references: [id])
+  orderItems     OrderItem[]
+  recentlyViewed RecentlyViewed[]
+
+  @@map("products")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique @default(cuid())
+  totalAmount Decimal     @db.Decimal(10, 2)
+  status      OrderStatus @default(PENDING)
+  address     String?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  userId   String
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items    OrderItem[]
+  payments Payment[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+  productId String
+  orderId   String
+
+  product Product @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+// ==================== WALLET & TRANSACTION MODELS ====================
+
+model Wallet {
+  id        String   @id @default(cuid())
+  balance   Decimal  @db.Decimal(10, 2) @default(0)
+  currency  String   @default("ZAR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId       String        @unique
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@map("wallets")
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  amount      Decimal         @db.Decimal(10, 2)
+  type        TransactionType
+  description String?
+  reference   String?
+  createdAt   DateTime        @default(now())
+
+  walletId String
+  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+model WithdrawalRequest {
+  id              String           @id @default(cuid())
+  amount          Decimal          @db.Decimal(10, 2)
+  status          WithdrawalStatus @default(PENDING)
+  bankName        String
+  accountNumber   String
+  accountHolder   String
+  branchCode      String?
+  reference       String?
+  rejectionReason String?
+  processedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("withdrawal_requests")
+}
+
+// ==================== ASSET MODELS ====================
+
+model Asset {
+  id          String   @id @default(cuid())
+  name        String
+  category    String
+  iconPath    String?
+  mapIconPath String?
+  createdAt   DateTime @default(now())
+
+  @@map("assets")
+}
+
+// ==================== GALLERY MODELS ====================
+
+model GalleryImage {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("gallery_images")
+}
+
+// ==================== NOTIFICATION MODELS ====================
+
+enum NotificationType {
+  BOOKING_NEW
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_COMPLETED
+  MESSAGE_NEW
+  REVIEW_NEW
+  JOB_APPLICATION
+  JOB_ACCEPTED
+  ORDER_UPDATE
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  SYSTEM
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ==================== AVAILABILITY MODELS ====================
+
+model Availability {
+  id        String   @id @default(cuid())
+  dayOfWeek Int      // 0 = Sunday, 1 = Monday, etc.
+  startTime String   // HH:MM format
+  endTime   String   // HH:MM format
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  providerId String
+  provider   User   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, dayOfWeek])
+  @@map("availability")
+}
+
+model BlockedTime {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  startTime String?  // HH:MM format, null = whole day blocked
+  endTime   String?  // HH:MM format, null = whole day blocked
+  reason    String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  providerId String
+  provider   User   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, date])
+  @@map("blocked_times")
+}
+
+// ==================== PAYMENT MODELS ====================
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentType {
+  ORDER
+  APPOINTMENT
+  WALLET_DEPOSIT
+  SUBSCRIPTION
+}
+
+enum PaymentProvider {
+  YOCO
+  PAYFAST
+  MANUAL
+  WALLET
+}
+
+model Payment {
+  id              String          @id @default(cuid())
+  amount          Decimal         @db.Decimal(10, 2)
+  currency        String          @default("ZAR")
+  status          PaymentStatus   @default(PENDING)
+  type            PaymentType     @default(ORDER)
+  provider        PaymentProvider
+  providerRef     String?         // External payment reference (Yoco/PayFast transaction ID)
+  providerData    Json?           // Store full response from payment provider
+  description     String?
+  metadata        Json?
+  failureReason   String?
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId       String?
+  order         Order?       @relation(fields: [orderId], references: [id])
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@index([userId])
+  @@index([providerRef])
+  @@map("payments")
+}
+
+// ==================== SAVED/FAVORITES MODELS ====================
+
+model SavedService {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serviceId])
+  @@map("saved_services")
+}
+
+model SavedProvider {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId     String
+  user       User   @relation("SavedByUser", fields: [userId], references: [id], onDelete: Cascade)
+  providerId String
+  provider   User   @relation("SavedProvider", fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, providerId])
+  @@map("saved_providers")
+}
+
+// ==================== NOTIFICATION PREFERENCES ====================
+
+enum NotificationFrequency {
+  REALTIME
+  DAILY_DIGEST
+  WEEKLY_DIGEST
+  DISABLED
+}
+
+model NotificationPreference {
+  id                String                @id @default(cuid())
+  notificationType  NotificationType
+  emailEnabled      Boolean               @default(true)
+  inAppEnabled      Boolean               @default(true)
+  pushEnabled       Boolean               @default(false)
+  frequency         NotificationFrequency @default(REALTIME)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, notificationType])
+  @@map("notification_preferences")
+}
+
+// ==================== REPORT/FLAG SYSTEM ====================
+
+enum ReportType {
+  SPAM
+  OFFENSIVE_CONTENT
+  FRAUD
+  SCAM
+  INAPPROPRIATE_SERVICE
+  FAKE_REVIEWS
+  HARASSMENT
+  COPYRIGHT
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+model ContentReport {
+  id              String       @id @default(cuid())
+  type            ReportType
+  description     String       @db.Text
+  evidence        Json?
+  status          ReportStatus @default(PENDING)
+  adminNotes      String?      @db.Text
+  resolvedAt      DateTime?
+  resolvedById    String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  reporterId        String
+  reporter          User     @relation("ReportSubmitter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUserId    String?
+  reportedUser      User?    @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+  reportedServiceId String?
+  reportedService   Service? @relation(fields: [reportedServiceId], references: [id], onDelete: SetNull)
+  reportedReviewId  String?
+  reportedReview    Review?  @relation(fields: [reportedReviewId], references: [id], onDelete: SetNull)
+  resolvedBy        User?    @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([reporterId])
+  @@index([status])
+  @@map("content_reports")
+}
+
+// ==================== SEARCH & BROWSING HISTORY ====================
+
+model SearchHistory {
+  id        String   @id @default(cuid())
+  query     String
+  filters   Json?    // Store search filters used
+  results   Int      @default(0) // Number of results found
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("search_history")
+}
+
+model RecentlyViewed {
+  id        String   @id @default(cuid())
+  viewCount Int      @default(1)
+  lastViewed DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serviceId])
+  @@unique([userId, productId])
+  @@index([userId, lastViewed])
+  @@map("recently_viewed")
+}
+
+// ==================== SAVED FILTERS ====================
+
+model SavedFilter {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // "services", "products", "providers"
+  filters   Json     // The filter criteria
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("saved_filters")
+}
+
+// ==================== SERVICE SHARE & REFERRALS ====================
+
+model ServiceShare {
+  id         String   @id @default(cuid())
+  shareToken String   @unique @default(cuid())
+  clickCount Int      @default(0)
+  platform   String?  // "whatsapp", "facebook", "twitter", "email", "copy"
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime?
+
+  // Relations
+  serviceId   String
+  service     Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User       @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  referrals   Referral[]
+
+  @@index([shareToken])
+  @@map("service_shares")
+}
+
+model Referral {
+  id              String        @id @default(cuid())
+  status          ReferralStatus @default(PENDING)
+  rewardAmount    Decimal?      @db.Decimal(10, 2)
+  rewardPaidAt    DateTime?
+  createdAt       DateTime      @default(now())
+  convertedAt     DateTime?     // When referral resulted in a booking/purchase
+
+  // Relations
+  referrerId      String
+  referrer        User          @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUserId  String?
+  referredUser    User?         @relation("ReferredUser", fields: [referredUserId], references: [id], onDelete: SetNull)
+  sourceServiceId String?
+  sourceService   Service?      @relation(fields: [sourceServiceId], references: [id], onDelete: SetNull)
+  shareId         String?
+  share           ServiceShare? @relation(fields: [shareId], references: [id], onDelete: SetNull)
+
+  @@index([referrerId])
+  @@map("referrals")
+}
+
+enum ReferralStatus {
+  PENDING
+  CONVERTED
+  REWARDED
+  EXPIRED
+}
+
+// ==================== RECURRING APPOINTMENTS ====================
+
+model RecurringAppointment {
+  id           String              @id @default(cuid())
+  pattern      RecurringPattern
+  frequency    Int                 @default(1) // Every X weeks/months
+  dayOfWeek    Int?                // 0-6 for weekly
+  dayOfMonth   Int?                // 1-31 for monthly
+  time         String              // HH:MM format
+  startDate    DateTime
+  endDate      DateTime?
+  isActive     Boolean             @default(true)
+  occurrences  Int?                // Total number of occurrences (null = unlimited until endDate)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  // Relations
+  requesterId  String
+  requester    User                @relation("RecurringRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  providerId   String
+  provider     User                @relation("RecurringProvider", fields: [providerId], references: [id], onDelete: Cascade)
+  serviceId    String
+  service      Service             @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@map("recurring_appointments")
+}
+
+enum RecurringPattern {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+// ==================== THEME CONFIGURATION ====================
+
+model ThemeConfig {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String?
+  isActive     Boolean  @default(false)
+  isDefault    Boolean  @default(false)
+  colors       Json     // Light mode colors
+  fonts        Json     // Font families
+  borderRadius Json     // Border radius values
+  spacing      Json?    // Optional spacing scale
+  darkMode     Json?    // Dark mode colors
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdById  String?
+  createdBy    User?    @relation("ThemeCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([isActive])
+  @@map("theme_configs")
+}

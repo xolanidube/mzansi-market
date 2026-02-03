@@ -1,0 +1,1 @@
+export { ShopsMapView } from "./ShopsMapView";
