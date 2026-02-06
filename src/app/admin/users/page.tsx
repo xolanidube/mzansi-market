@@ -169,7 +169,7 @@ export default function AdminUsersPage() {
                         {user.isActive ? (
                           <Badge variant="success">Active</Badge>
                         ) : (
-                          <Badge variant="danger">Inactive</Badge>
+                          <Badge variant="error">Inactive</Badge>
                         )}
                         {user.isVerified && (
                           <Badge variant="primary">Verified</Badge>
@@ -208,7 +208,7 @@ export default function AdminUsersPage() {
                         {user.isActive ? (
                           <Button
                             size="sm"
-                            variant="danger"
+                            variant="error"
                             onClick={() => handleAction(user.id, "deactivate")}
                             disabled={actionLoading === user.id}
                           >

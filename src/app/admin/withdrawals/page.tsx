@@ -108,7 +108,7 @@ export default function AdminWithdrawalsPage() {
       case "COMPLETED":
         return <Badge variant="success">Completed</Badge>;
       case "REJECTED":
-        return <Badge variant="danger">Rejected</Badge>;
+        return <Badge variant="error">Rejected</Badge>;
       case "CANCELLED":
         return <Badge variant="secondary">Cancelled</Badge>;
       default:
