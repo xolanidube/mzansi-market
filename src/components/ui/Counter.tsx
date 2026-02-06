@@ -33,7 +33,7 @@ export function Counter({
   const [displayValue, setDisplayValue] = useState(from);
   const [hasStarted, setHasStarted] = useState(!triggerOnView);
   const elementRef = useRef<HTMLSpanElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
 
   // Easing function for smooth animation
   const easeOutExpo = (t: number): number => {

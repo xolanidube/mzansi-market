@@ -64,7 +64,6 @@ export function FeaturedShops() {
       showDots
       showArrows
       loop
-      itemsPerView={{ sm: 1, md: 2, lg: 3 }}
       gap={24}
     >
       {shops.map((shop) => (
