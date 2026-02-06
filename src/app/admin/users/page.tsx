@@ -208,7 +208,7 @@ export default function AdminUsersPage() {
                         {user.isActive ? (
                           <Button
                             size="sm"
-                            variant="error"
+                            variant="danger"
                             onClick={() => handleAction(user.id, "deactivate")}
                             disabled={actionLoading === user.id}
                           >
