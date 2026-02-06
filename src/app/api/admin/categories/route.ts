@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      categories: categories.map((cat) => ({
+      categories: categories.map((cat: typeof categories[number]) => ({
         id: cat.id,
         name: cat.name,
         description: cat.description,
