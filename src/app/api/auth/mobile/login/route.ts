@@ -86,11 +86,11 @@ export async function POST(request: NextRequest) {
         shop: user.shop ? {
           id: user.shop.id,
           name: user.shop.name,
-          description: user.shop.description,
-          logo: user.shop.logo,
-          banner: user.shop.banner,
-          address: user.shop.address,
-          isVerified: user.shop.isVerified,
+          description: (user.shop as any).description,
+          logo: (user.shop as any).logo,
+          banner: (user.shop as any).banner,
+          address: (user.shop as any).address,
+          isVerified: (user.shop as any).isVerified,
         } : null,
         wallet: user.wallet ? {
           id: user.wallet.id,
