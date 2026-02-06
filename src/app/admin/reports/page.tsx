@@ -138,8 +138,8 @@ export default function AdminReportsPage() {
   const getReportTypeBadge = (type: string) => {
     const typeColors: Record<string, "danger" | "warning" | "primary" | "secondary"> = {
       SPAM: "warning",
-      FRAUD: "error",
-      HARASSMENT: "error",
+      FRAUD: "danger",
+      HARASSMENT: "danger",
       INAPPROPRIATE_CONTENT: "warning",
       FAKE_REVIEW: "primary",
       OTHER: "secondary",
